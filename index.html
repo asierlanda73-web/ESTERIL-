@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#4f46e5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<title>Esteril</title>
+<style>
+:root{--primary:#4f46e5;--bg:linear-gradient(135deg,#667eea 0%,#764ba2 100%);--text:#1f2937;--muted:#6b7280}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}
+.container{background:#fff;padding:30px;border-radius:20px;box-shadow:0 20px 25px -5px rgba(0,0,0,.2),0 10px 10px -5px rgba(0,0,0,.04);max-width:480px;width:100%}
+.header-title{text-align:center;color:var(--text);margin-bottom:20px}
+.header-title h1{font-size:1.6rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.header-title h2{font-size:1.1rem;font-weight:600;color:var(--muted)}
+.select-group{margin-bottom:25px}
+label{font-weight:600;display:block;margin-bottom:8px;color:var(--text);font-size:.95rem}
+select{width:100%;padding:12px 16px;border-radius:10px;border:2px solid #e5e7eb;font-size:1rem;color:var(--text);outline:none;background:#f9fafb}
+select:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 4px rgba(79,70,229,.15)}
+.days-list{display:flex;flex-direction:column;gap:10px}
+.day-card{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-radius:12px;font-weight:500}
+.day-name{font-weight:700;font-size:1rem}
+.shift-tag{padding:6px 14px;border-radius:20px;font-size:.9rem;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,.05);text-align:right}
+.shift-descanso{background:#fee2e2;color:#991b1b}.shift-noche{background:#e0e7ff;color:#3730a3}.shift-manana{background:#fef3c7;color:#92400e}.shift-tarde{background:#d1fae5;color:#065f46}
+.card-lunes{background:#f8fafc;border-left:5px solid #3b82f6}.card-martes{background:#f8fafc;border-left:5px solid #10b981}.card-miercoles{background:#f8fafc;border-left:5px solid #f59e0b}.card-jueves{background:#f8fafc;border-left:5px solid #8b5cf6}.card-viernes{background:#f8fafc;border-left:5px solid #ec4899}
+.install{display:none;width:100%;margin-top:14px;padding:12px;border:0;border-radius:10px;background:#111827;color:#fff;font-weight:700;font-size:1rem}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header-title"><h1>Esteril</h1><h2>ESTA SEMANA TE TOCA TRABAJAR EN.....</h2></div>
+<div class="select-group">
+<label for="semana">Selecciona tu semana de trabajo:</label>
+<select id="semana"><option value="">-- Seleccionar Semana (1 - 27) --</option></select>
+<button id="installBtn" class="install">📲 Instalar Esteril</button>
+</div>
+<div class="days-list" id="contenedorDias"></div>
+</div>
+<script>
+const cuadrante = {
+1:{L:"Descanso",M:"Descanso",X:"Mañana (Montaje)",J:"Tarde (Lavadoras)",V:"Tarde (Lavadoras)"},
+2:{L:"Tarde (Lavadoras)",M:"Noche",X:"Noche",J:"Descanso",V:"Descanso"},
+3:{L:"Tarde (Lavadoras)",M:"Tarde (Montaje)",X:"Tarde (Lavadoras)",J:"Tarde (Montaje)",V:"Tarde (Plasma)"},
+4:{L:"Tarde (Lavadoras)",M:"Tarde (Montaje)",X:"Descanso",J:"Mañana (Lavadoras)",V:"Mañana (Lavadoras)"},
+5:{L:"Noche",M:"Noche",X:"Descanso",J:"Descanso",V:"Descanso"},
+6:{L:"Tarde (Lavadoras)",M:"Tarde (Montaje)",X:"Tarde (Lavadoras)",J:"Tarde (Limpio)",V:"Tarde (Recepción)"},
+7:{L:"Mañana (Autoclave)",M:"Mañana (Autoclave)",X:"Mañana (Lavadoras)",J:"Descanso",V:"Tarde (Lavadoras)"},
+8:{L:"Tarde (Montaje)",M:"Tarde (Montaje)",X:"Tarde (Lavadoras)",J:"Noche",V:"Noche"},
+9:{L:"Descanso",M:"Descanso",X:"Tarde (Lavadoras)",J:"Tarde (Montaje)",V:"Tarde (Autoclave)"},
+10:{L:"Tarde (Montaje)",M:"Tarde (Recepción)",X:"Noche",J:"Noche",V:"Noche"},
+11:{L:"Descanso",M:"Descanso",X:"Mañana (Lavadoras)",J:"Mañana (Lavadoras)",V:"Mañana (Limpio)"},
+12:{L:"Noche",M:"Descanso",X:"Descanso",J:"Tarde (Lavadoras)",V:"Tarde (Montaje)"},
+13:{L:"Tarde (Montaje)",M:"Tarde (Lavadoras)",X:"Tarde (Autoclave)",J:"Tarde (Autoclave)",V:"Tarde (Montaje)"},
+14:{L:"Mañana (Lavadoras)",M:"Mañana (Lavadoras)",X:"Tarde (Montaje)",J:"Tarde (Limpio)",V:"Tarde (Limpio)"},
+15:{L:"Noche",M:"Noche",X:"Descanso",J:"Descanso",V:"Descanso"},
+16:{L:"Descanso",M:"Tarde (Autoclave)",X:"Tarde (Montaje)",J:"Tarde (Montaje)",V:"Tarde (Limpio)"},
+17:{L:"Tarde (Montaje)",M:"Tarde (Limpio)",X:"Tarde (Limpio)",J:"Tarde (Lavadoras)",V:"Tarde (Montaje)"},
+18:{L:"Mañana (Recepción)",M:"Mañana (Montaje)",X:"Noche",J:"Noche",V:"Noche"},
+19:{L:"Descanso",M:"Descanso",X:"Descanso",J:"Mañana (Lavadoras)",V:"Mañana (Lavadoras)"},
+20:{L:"Tarde (Montaje)",M:"Tarde (Limpio)",X:"Tarde (Limpio)",J:"Tarde (Montaje)",V:"Tarde (Montaje)"},
+21:{L:"Mañana (Lavadoras)",M:"Descanso",X:"Mañana (Limpio)",J:"Mañana (Plasma)",V:"Mañana (Recepción)"},
+22:{L:"Tarde (Montaje)",M:"Tarde (Lavadoras)",X:"Noche",J:"Noche",V:"Descanso"},
+23:{L:"Descanso",M:"Mañana (Lavadoras)",X:"Mañana (Plasma)",J:"Mañana (Autoclave)",V:"Mañana (Lavadoras)"},
+24:{L:"Tarde (Autoclave)",M:"Tarde (Montaje)",X:"Tarde (Montaje)",J:"Tarde (Lavadoras)",V:"Tarde (Lavadoras)"},
+25:{L:"Noche",M:"Noche",X:"Descanso",J:"Descanso",V:"Descanso"},
+26:{L:"Tarde (Limpio)",M:"Tarde (Lavadoras)",X:"Tarde (Recepción)",J:"Tarde (Plasma)",V:"Tarde (Montaje)"},
+27:{L:"Mañana (Limpio)",M:"Mañana (Recepción)",X:"Tarde (Montaje)",J:"Tarde (Montaje)",V:"Noche"}
+};
+const selectSemana=document.getElementById('semana'), contenedor=document.getElementById('contenedorDias');
+for(let i=1;i<=27;i++){let o=document.createElement('option');o.value=i;o.textContent='Semana '+i;selectSemana.appendChild(o)}
+function obtenerClaseTurno(v){if(v.includes("Descanso"))return"shift-descanso";if(v.includes("Noche"))return"shift-noche";if(v.includes("Mañana"))return"shift-manana";if(v.includes("Tarde"))return"shift-tarde";return""}
+function consultarSemana(){
+ const sem=selectSemana.value;contenedor.innerHTML='';if(!sem)return;
+ const dias=[{clave:'L',nombre:'Lunes',clase:'card-lunes'},{clave:'M',nombre:'Martes',clase:'card-martes'},{clave:'X',nombre:'Miércoles',clase:'card-miercoles'},{clave:'J',nombre:'Jueves',clase:'card-jueves'},{clave:'V',nombre:'Viernes',clase:'card-viernes'}];
+ dias.forEach(d=>{const puesto=cuadrante[sem][d.clave];const card=document.createElement('div');card.className=`day-card ${d.clase}`;card.innerHTML=`<span class="day-name">${d.nombre}</span><span class="shift-tag ${obtenerClaseTurno(puesto)}">${puesto}</span>`;contenedor.appendChild(card)})
+ localStorage.setItem('semanaEsteril',sem);
+}
+selectSemana.addEventListener('change',consultarSemana);
+const guardada=localStorage.getItem('semanaEsteril'); if(guardada){selectSemana.value=guardada;consultarSemana()}
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));
+let deferredPrompt;const installBtn=document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn.style.display='block'});
+installBtn.addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.style.display='none'});
+</script>
+</body>
+</html>
