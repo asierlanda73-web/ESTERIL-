@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Esteril Cruces - Instrucciones</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:Arial,sans-serif;background:#eef2f7;margin:0;color:#202938}
+header{background:#123b63;color:white;padding:22px 15px;text-align:center}
+main{max-width:700px;margin:20px auto;padding:15px}
+.panel,.aviso{background:white;padding:18px;border-radius:12px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
+input,textarea,select,button{box-sizing:border-box;width:100%;padding:12px;margin:7px 0;border-radius:7px;border:1px solid #ccd3dc;font-size:16px}
+button{background:#155e91;color:white;border:0;font-weight:bold;cursor:pointer}
+.urgente{border-left:6px solid #d62828}
+.pequeno{color:#586575;font-size:13px}
+.oculto{display:none}
+.estado{padding:10px;background:#e4edf7;border-radius:7px;margin:10px 0}
+</style>
+</head>
+<body>
+<header>
+<h1>ESTERIL CRUCES</h1>
+<p>Tablón de instrucciones del equipo</p>
+</header>
+<main>
+<section id="acceso" class="panel">
+<h2>Acceso del trabajador</h2>
+<p>Introduce tu usuario de correo electrónico y contraseña.</p>
+<input id="correo" type="email" placeholder="Correo electrónico" autocomplete="username">
+<input id="clave" type="password" placeholder="Contraseña" autocomplete="current-password">
+<button id="entrar">Entrar</button>
+<p id="mensaje" role="status"></p>
+</section>
+
+<section id="contenido" class="oculto">
+<div class="panel">
+<p id="bienvenida"></p>
+<label for="turno">Consultar turno</label>
+<select id="turno">
+<option value="Todos">Todos los turnos</option>
+<option value="Mañana">Mañana</option>
+<option value="Tarde">Tarde</option>
+<option value="Noche">Noche</option>
+</select>
+<button id="actualizar">Actualizar instrucciones</button>
+<button id="salir">Cerrar sesión</button>
+</div>
+
+<section id="zonaSupervisor" class="panel oculto">
+<h2>Publicar instrucción</h2>
+<input id="titulo" placeholder="Título de la instrucción">
+<textarea id="texto" rows="5" placeholder="Escribe la instrucción"></textarea>
+<label for="turnoNuevo">Turno destinatario</label>
+<select id="turnoNuevo">
+<option value="Todos">Todos</option>
+<option value="Mañana">Mañana</option>
+<option value="Tarde">Tarde</option>
+<option value="Noche">Noche</option>
+</select>
+<label><input id="urgente" type="checkbox" style="width:auto"> Aviso urgente</label>
+<button id="publicar">Publicar instrucción</button>
+<p id="mensajePublicacion" role="status"></p>
+</section>
+
+<h2>Instrucciones recibidas</h2>
+<div id="lista"></div>
+</section>
+</main>
+
+<script>
+const SUPABASE_URL = "https://yzwtlwftrfeycxfgitrh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_6TC-oVDt4PuPGMCUIFxUJw_IHHGr7ol";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let usuario = null;
+let perfil = null;
+
+const $ = id => document.getElementById(id);
+
+$("entrar").addEventListener("click", iniciarSesion);
+$("salir").addEventListener("click", cerrarSesion);
+$("actualizar").addEventListener("click", cargarInstrucciones);
+$("turno").addEventListener("change", cargarInstrucciones);
+$("publicar").addEventListener("click", publicarInstruccion);
+
+async function iniciarSesion(){
+  $("mensaje").textContent = "Comprobando acceso...";
+  const {data,error} = await db.auth.signInWithPassword({
+    email:$("correo").value.trim(),
+    password:$("clave").value
+  });
+
+  if(error){
+    $("mensaje").textContent = "No se ha podido entrar. Comprueba el correo y la contraseña.";
+    return;
+  }
+
+  usuario = data.user;
+
+  const {data:datos,error:errorPerfil} = await db
+    .from("profiles")
+    .select("full_name,role")
+    .eq("id",usuario.id)
+    .single();
+
+  if(errorPerfil || !datos){
+    await db.auth.signOut();
+    usuario = null;
+    $("mensaje").textContent =
+      "Tu cuenta todavía no tiene un perfil autorizado. Contacta con el administrador.";
+    return;
+  }
+
+  perfil = datos;
+  $("acceso").classList.add("oculto");
+  $("contenido").classList.remove("oculto");
+  $("bienvenida").textContent =
+    "Bienvenido/a " + (perfil.full_name || usuario.email);
+  $("zonaSupervisor").classList.toggle("oculto",perfil.role !== "supervisor");
+  await cargarInstrucciones();
+}
+
+async function cerrarSesion(){
+  await db.auth.signOut();
+  usuario = null;
+  perfil = null;
+  $("contenido").classList.add("oculto");
+  $("acceso").classList.remove("oculto");
+  $("clave").value = "";
+  $("mensaje").textContent = "Sesión cerrada.";
+}
+
+async function cargarInstrucciones(){
+  if(!usuario) return;
+  $("lista").textContent = "Cargando instrucciones...";
+
+  let consulta = db.from("instructions")
+    .select("id,title,body,shift,urgent,created_at")
+    .eq("active",true)
+    .order("created_at",{ascending:false});
+
+  const {data,error} = await consulta;
+
+  if(error){
+    $("lista").textContent =
+      "No se han podido cargar las instrucciones. Comprueba los permisos de acceso.";
+    return;
+  }
+
+  const turno = $("turno").value;
+  const visibles = (data || []).filter(i =>
+    turno === "Todos" ? true :
+    i.shift === "Todos" || i.shift === turno
+  );
+
+  if(!visibles.length){
+    $("lista").textContent = "No hay instrucciones para esta selección.";
+    return;
+  }
+
+  $("lista").replaceChildren();
+
+  for(const i of visibles){
+    const tarjeta = document.createElement("article");
+    tarjeta.className = "aviso panel" + (i.urgent ? " urgente" : "");
+
+    const titulo = document.createElement("h3");
+    titulo.textContent = (i.urgent ? "🚨 AVISO URGENTE: " : "") + i.title;
+
+    const texto = document.createElement("p");
+    texto.style.whiteSpace = "pre-wrap";
+    texto.textContent = i.body;
+
+    const info = document.createElement("p");
+    info.className = "pequeno";
+    info.textContent = "Turno: " + i.shift +
+      (i.created_at ? " · Publicado: " +
+      new Date(i.created_at).toLocaleString("es-ES") : "");
+
+    const estado = document.createElement("p");
+    estado.className = "estado";
+    estado.textContent = "Comprobando lectura...";
+
+    const boton = document.createElement("button");
+    boton.textContent = "Confirmar lectura";
+
+    const {data:lectura,error:errorLectura} = await db
+      .from("instruction_reads")
+      .select("read_at")
+      .eq("instruction_id",i.id)
+      .eq("user_id",usuario.id)
+      .maybeSingle();
+
+    if(errorLectura){
+      estado.textContent = "No se ha podido comprobar la lectura.";
+      boton.disabled = true;
+    } else if(lectura){
+      estado.textContent = "✓ Lectura confirmada";
+      boton.disabled = true;
+    } else {
+      estado.textContent = "Pendiente de confirmar lectura";
+      boton.addEventListener("click",async()=>{
+        boton.disabled = true;
+        const {error} = await db.from("instruction_reads").insert({
+          instruction_id:i.id,
+          user_id:usuario.id
+        });
+        if(error){
+          estado.textContent = "No se pudo confirmar. Inténtalo de nuevo.";
+          boton.disabled = false;
+        }else{
+          estado.textContent = "✓ Lectura confirmada";
+          boton.textContent = "Lectura confirmada";
+        }
+      });
+    }
+
+    tarjeta.append(titulo,texto,info,estado,boton);
+    $("lista").append(tarjeta);
+  }
+}
+
+async function publicarInstruccion(){
+  if(!perfil || perfil.role !== "supervisor") return;
+
+  const titulo = $("titulo").value.trim();
+  const texto = $("texto").value.trim();
+  $("mensajePublicacion").textContent = "";
+
+  if(!titulo || !texto){
+    $("mensajePublicacion").textContent = "Escribe el título y la instrucción.";
+    return;
+  }
+
+  const {error} = await db.from("instructions").insert({
+    title:titulo,
+    body:texto,
+    shift:$("turnoNuevo").value,
+    urgent:$("urgente").checked,
+    active:true,
+    created_by:usuario.id
+  });
+
+  if(error){
+    $("mensajePublicacion").textContent =
+      "No se ha podido publicar. Revisa los permisos de supervisor.";
+    return;
+  }
+
+  $("titulo").value = "";
+  $("texto").value = "";
+  $("urgente").checked = false;
+  $("mensajePublicacion").textContent = "Instrucción publicada.";
+  await cargarInstrucciones();
+}
+
+db.auth.getSession().then(({data})=>{
+  if(data.session){
+    $("correo").value = data.session.user.email || "";
+    iniciarSesion();
+  }
+});
+</script>
+</body>
+</html>
