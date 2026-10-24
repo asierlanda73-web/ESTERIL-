@@ -67,6 +67,13 @@ button{background:#155e91;color:white;border:0;font-weight:bold;cursor:pointer}
 <h2>Instrucciones recibidas</h2>
 <div id="lista"></div>
 </section>
+  <section id="recuperar" class="panel oculto">
+  <h2>Cambiar contraseña</h2>
+  <p>Escribe tu nueva contraseña para acceder a Esteril Cruces.</p>
+  <input id="nuevaClave" type="password" placeholder="Nueva contraseña" autocomplete="new-password">
+  <button id="guardarClave">Guardar nueva contraseña</button>
+  <p id="mensajeClave" role="status"></p>
+</section>
 </main>
 
 <script>
@@ -256,12 +263,54 @@ async function publicarInstruccion(){
   await cargarInstrucciones();
 }
 
+let recuperacionActiva = false;
+
+$("guardarClave").addEventListener("click", async()=>{
+  const clave = $("nuevaClave").value;
+
+  if(clave.length < 6){
+    $("mensajeClave").textContent =
+      "La contraseña debe tener al menos 6 caracteres.";
+    return;
+  }
+
+  $("mensajeClave").textContent = "Guardando contraseña...";
+
+  const {error} = await db.auth.updateUser({
+    password: clave
+  });
+
+  if(error){
+    $("mensajeClave").textContent =
+      "No se pudo cambiar la contraseña. Solicita un nuevo enlace.";
+    return;
+  }
+
+  $("mensajeClave").textContent =
+    "Contraseña cambiada correctamente. Ya puedes iniciar sesión.";
+  $("recuperar").classList.add("oculto");
+  $("acceso").classList.remove("oculto");
+  $("clave").value = "";
+  $("nuevaClave").value = "";
+});
+
+db.auth.onAuthStateChange((event) => {
+  if(event === "PASSWORD_RECOVERY"){
+    recuperacionActiva = true;
+    $("acceso").classList.add("oculto");
+    $("contenido").classList.add("oculto");
+    $("recuperar").classList.remove("oculto");
+  }
+});
+  
+
 db.auth.getSession().then(({data})=>{
-  if(data.session){
+  if(data.session && !recuperacionActiva){
     $("correo").value = data.session.user.email || "";
     iniciarSesion();
   }
 });
+
 </script>
 </body>
 </html>
