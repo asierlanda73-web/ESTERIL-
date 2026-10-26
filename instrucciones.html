@@ -91,7 +91,26 @@ $("salir").addEventListener("click", cerrarSesion);
 $("actualizar").addEventListener("click", cargarInstrucciones);
 $("turno").addEventListener("change", cargarInstrucciones);
 $("publicar").addEventListener("click", publicarInstruccion);
+$("olvidoClave").addEventListener("click", async (e) => {
+  e.preventDefault();
 
+  const correo = $("correo").value.trim();
+
+  if (!correo) {
+    $("mensajeRecuperacion").textContent =
+      "Escribe primero tu correo electrónico.";
+    $("correo").focus();
+    return;
+  }
+
+  const { error } = await db.auth.resetPasswordForEmail(correo, {
+    redirectTo: "https://asierlanda73-web.github.io/ESTERIL-/instrucciones.html"
+  });
+
+  $("mensajeRecuperacion").textContent = error
+    ? "Error: " + error.message
+    : "Si el correo está registrado, recibirás un enlace para cambiar la contraseña.";
+});
 async function iniciarSesion(){
   $("mensaje").textContent = "Comprobando acceso...";
   const {data,error} = await db.auth.signInWithPassword({
