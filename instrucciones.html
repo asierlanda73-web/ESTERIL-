@@ -134,7 +134,9 @@ async function iniciarSesion(){
     .eq("id",usuario.id)
     .single();
 
-  if(errorPerfil || !datos){
+  if(errorPerfil || !datos) {
+  console.log("Error del perfil:", errorPerfil);
+  alert("Error del perfil: " + (errorPerfil?.message || "No se encontró el perfil"));
     await db.auth.signOut();
     usuario = null;
     $("mensaje").textContent =
