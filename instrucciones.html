@@ -133,17 +133,13 @@ async function iniciarSesion(){
     .select("full_name,role")
     .eq("id",usuario.id)
     .single();
-
-  
 if(errorPerfil || !datos){
     $("mensaje").textContent =
       "Error del perfil: " +
       (errorPerfil ? errorPerfil.message : "No se encontró el perfil");
     return;
   }
-
-
-  perfil = datos;
+   perfil = datos;
   $("acceso").classList.add("oculto");
   $("contenido").classList.remove("oculto");
   $("bienvenida").textContent =
