@@ -325,11 +325,31 @@ db.auth.onAuthStateChange((event) => {
 });
   
 
-db.auth.getSession().then(({data})=>{
-  if(data.session && !recuperacionActiva){
-    $("correo").value = data.session.user.email || "";
-    iniciarSesion();
+db.auth.getSession().then(async ({data})=>{
+  if(!data.session || recuperacionActiva) return;
+
+  usuario = data.session.user;
+
+  const {data:datos,error:errorPerfil} = await db
+    .from("profiles")
+    .select("full_name,role")
+    .eq("id",usuario.id)
+    .single();
+
+  if(errorPerfil || !datos){
+    await db.auth.signOut();
+    usuario = null;
+    return;
   }
+
+  perfil = datos;
+  $("acceso").classList.add("oculto");
+  $("contenido").classList.remove("oculto");
+  $("bienvenida").textContent =
+    "Bienvenido/a " + (perfil.full_name || usuario.email);
+  $("zonaSupervisor").classList.toggle("oculto",perfil.role !== "supervisor");
+
+  await cargarInstrucciones();
 });
 
 </script>
