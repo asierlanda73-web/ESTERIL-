@@ -124,7 +124,7 @@ async function iniciarSesion(){
     $("mensaje").textContent = "No se ha podido entrar. Comprueba el correo y la contraseña.";
     return;
   }
-
+$("mensaje").textContent = "";
   usuario = data.user;
 
   const {data:datos,error:errorPerfil} = await db
