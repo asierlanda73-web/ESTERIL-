@@ -30,8 +30,7 @@ button{background:#155e91;color:white;border:0;font-weight:bold;cursor:pointer}
 <input id="correo" type="email" placeholder="Correo electrónico" autocomplete="username">
 <input id="clave" type="password" placeholder="Contraseña" autocomplete="current-password">
 <button id="entrar">Entrar</button>
-<p><a href="#" id="olvidoClave">He olvidado mi contraseña</a></p>
-<p id="mensajeRecuperacion" role="status"></p>
+
 <p><a href="#" id="olvidoClave">He olvidado mi contraseña</a></p>
 <p id="mensajeRecuperacion" role="status"></p>                           
 <p id="mensaje" role="status"></p>
@@ -107,7 +106,7 @@ $("olvidoClave").addEventListener("click", async (e) => {
   }
 
   const { error } = await db.auth.resetPasswordForEmail(correo, {
-    redirectTo: "https://asierlanda73-web.github.io/ESTERIL-/instrucciones.html"
+    redirectTo: "https://asierlanda73-web.github.io/ESTERIL-/instrucciones/index.html"
   });
 
   $("mensajeRecuperacion").textContent = error
